@@ -5,21 +5,10 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
-    driver-class-name: ${DB_DRIVER:org.postgresql.Driver}
-    url: jdbc:postgresql://hyeonwoo.com:5234/goormdotcom?currentSchema=public
-    username: goorm1
-    password: goorm123
-
-  # JPA 설정 (프로파일별로 오버라이드 가능)
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    open-in-view: false
-    properties:
-      hibernate:
-        default_batch_fetch_size: 200
-        format_sql: true
+    driver-class-name: ${DB_DRIVER}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   cloud:
     openfeign:
@@ -42,24 +31,14 @@ springdoc:
   use-fqn: true
 
 server:
-  port: ${PORT:5232}
+  port: ${SERVER_PORT}
 
 service:
   user:
-    url: http://localhost:8080
+    url: ${USER_SERVICE_URL}
   product:
-    url: http://localhost:8080
+    url: ${PRODUCT_SERVICE_URL}
   order:
-    url: http://localhost:8080
+    url: ${ORDER_SERVICE_URL}
   payment:
-    url: http://localhost:8080
-  delivery:
-    url: http://localhost:8080
-  stock:
-    url: http://localhost:8080
-
-logging:
-  level:
-    root: INFO
-    profect.group1.goormdotcom: INFO
-
+    url: ${PAYMENT_SERVICE_URL}
