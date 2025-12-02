@@ -37,18 +37,17 @@ class OrderInternalControllerTest {
     }
 
     @Test
-    @DisplayName("결제 성공 콜백 시 서비스 completePayment 호출")
+    @DisplayName("결제 성공 콜백 시 서비스 createOrderForLoadTest 호출")
     void completePayment_success() throws Exception {
         // given
-        UUID orderId = UUID.randomUUID();
-        when(orderService.completePayment(orderId)).thenReturn(mock(Order.class));
+        when(orderService.createOrderForLoadTest()).thenReturn(mock(Order.class));
 
         // when
-        mockMvc.perform(post("/internal/v1/orders/{orderId}/payment/success", orderId))
+        mockMvc.perform(post("/internal/v1/orders/payment/success"))
                 // then
                 .andExpect(status().isOk());
 
-        verify(orderService).completePayment(orderId);
+        verify(orderService).createOrderForLoadTest();
     }
 
     @Test

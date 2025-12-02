@@ -6,17 +6,21 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import profect.group1.goormdotcom.common.apiPayload.ApiResponse;
-import profect.group1.goormdotcom.common.apiPayload.exceptions.handler.OrderHandler;
 import profect.group1.goormdotcom.order.infrastructure.client.DeliveryClient;
 import profect.group1.goormdotcom.order.infrastructure.client.PaymentClient;
-import profect.group1.goormdotcom.order.infrastructure.client.dto.DeliveryStartResponseDto;
 import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmentRequestDto;
 import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmentRequestItemDto;
 import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmentResponseDto;
+import java.time.Instant;
+import profect.group1.goormdotcom.order.event.DeliveryCancellationRequestedEvent;
+import profect.group1.goormdotcom.order.event.DeliveryEventPublisherInterface;
+import profect.group1.goormdotcom.order.event.DeliveryRequestedEvent;
 import profect.group1.goormdotcom.order.infrastructure.client.StockClient;
 import profect.group1.goormdotcom.order.controller.external.v1.dto.OrderItemDto;
 import profect.group1.goormdotcom.order.controller.external.v1.dto.OrderRequestDto;
@@ -53,6 +57,7 @@ public class OrderService {
     private final StockClient stockClient;
     private final PaymentClient paymentClient;
     private final DeliveryClient deliveryClient;
+    private final DeliveryEventPublisherInterface deliveryEventPublisher;
 
     // @Value("${features.external-call.stock-check:true}")
     // private Boolean stockCheckEnabled;
@@ -68,6 +73,7 @@ public class OrderService {
        //상태 이력 추가
     private void appendOrderStatus(UUID orderId, OrderStatus status){   
         OrderEntity orderEntity = findOrderOrThrow(orderId);
+        orderEntity.updateStatus(status);
         orderStatusRepository.save(OrderStatusEntity.builder()
             .order(orderEntity)
             .status(status.getCode())
@@ -144,41 +150,70 @@ public class OrderService {
         return orderMapper.toDomain(orderEntity);
     }
 
+    @Transactional
     public Order completePayment(UUID orderId) {
         log.info("결제 완료 처리 시작: orderId={}", orderId);
 
         OrderEntity orderEntity = findOrderOrThrow(orderId);
         OrderAddressEntity addressEntity = orderAddressRepository.findByOrderId(orderId).orElseThrow(() -> new IllegalStateException("배송지 정보를 찾을 수 없습니다. orderId=" + orderId));
-
-        // 배송 시작 
-        try {
-            ApiResponse<DeliveryStartResponseDto> response = deliveryClient.startDelivery(new DeliveryClient.StartDeliveryRequest(
-                    orderId,
-                    addressEntity.getCustomerId(),
-                    addressEntity.getAddress(), addressEntity.getAddressDetail(),
-                    addressEntity.getZipcode(), addressEntity.getPhone(), addressEntity.getName(),
-                    addressEntity.getDeliveryMemo()
-            ));
-
-            if (!response.getCode().equals("COMMON200")) {
-                log.error("배송 시작 실패: orderId={}, code={}, message={}",
-                        orderId, response.getCode(), response.getMessage());
-                appendOrderStatus(orderId, OrderStatus.CANCELLED);
-                throw new IllegalStateException("배송 시작에 실패했습니다: " + response.getMessage());
-            }
-            log.info("배송 시작 완료: orderId={}, deliveryId={}", orderId, response.getResult());
-
-        } catch (Exception e) {
-            log.warn("[DELIVERY] 배달 생성 실패 - 주문은 결제완료로 유지: {}", e.getMessage());
-            // TODO: 실패 건을 별도 테이블/큐에 적재하여 재시도
+        // 기존 동기 호출 코드
+        // //배송시작
+        // try{
+        //     ApiResponse<DeliveryStartResponseDto> response = deliveryClient.startDelivery(new DeliveryClient.StartDeliveryRequest(
+        //         orderId, 
+        //         addressEntity.getCustomerId(), 
+        //         addressEntity.getAddress(), 
+        //         addressEntity.getAddressDetail(), 
+        //         addressEntity.getZipcode(), 
+        //         addressEntity.getPhone(), 
+        //         addressEntity.getName(), 
+        //         addressEntity.getDeliveryMemo()));
+        // }
+        // if (!response.getCode().equals("COMMON200")) {
+        //     log.error("배송 시작 실패: orderId={}, code={}, message={}", orderId, response.getCode(), response.getMessage());
+        //     appendOrderStatus(orderId, OrderStatus.CANCELED);
+        //     throw new IllegalStateException("배송 시작에 실패했습니다." + response.getMessage());
+        // } catch (Exception e) {
+        //     log.warn("[DELIVERY] 배달 생성 실패 - 주문은 결제 완료로 유지: {}", e.getMessage());
+        //     //TODO: 실패 건을 별도 테이블/큐에 적재하여 시도
+        // }
+        
+        // 1. TransactionSynchronization 등록 (롤백 감지만)
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status == STATUS_ROLLED_BACK) { //STATUS_ROLLED_BACK: 트랜잭션 롤백 상태(TransactionSynchronization 인터페이스 안에 상수로 정의되어 있음)
+                        log.warn("결제 완료 처리 롤백 감지 - 배송 취소 보상 이벤트 발행: orderId={}", orderId);
+                        deliveryEventPublisher.publishDeliveryCancellationRequested(
+                            new DeliveryCancellationRequestedEvent(orderId, Instant.now())
+                        );
+                    }
+                }
+            });
         }
 
+        // 2. 주문 상태를 결제 완료로 갱신 (배송 시작 이벤트 수신 시 COMPLETED 로 전환)
+        appendOrderStatus(orderId, OrderStatus.PAID);
 
-        // 주문 상태 업데이트       
-        appendOrderStatus(orderId, OrderStatus.COMPLETED);
+        // 3. 배송 요청 이벤트 생성 및 즉시 발행 (트랜잭션 커밋 전!)
+        DeliveryRequestedEvent event = new DeliveryRequestedEvent(
+            orderId,
+            addressEntity.getCustomerId(),
+            addressEntity.getAddress(),
+            addressEntity.getAddressDetail(),
+            addressEntity.getZipcode(),
+            addressEntity.getPhone(),
+            addressEntity.getName(),
+            addressEntity.getDeliveryMemo(),
+            Instant.now()
+        );
+        deliveryEventPublisher.publishDeliveryRequested(event);
+        log.info("배송 요청 이벤트 발행 완료: orderId={}", orderId);
         return orderMapper.toDomain(orderEntity);
     }
 
+    @Transactional
     public Order failPayment(UUID orderId) {
         log.info("결제 실패 처리 시작: orderId={}", orderId);
 
@@ -210,6 +245,9 @@ public class OrderService {
 
         //TODO:히스토리저장
         appendOrderStatus(orderId, OrderStatus.FAILED);
+        // 배송 취소 이벤트 발행 (배송이 이미 생성된 경우를 대비) ->> 나중 대비 지금 사용 X
+        deliveryEventPublisher.publishDeliveryCancellationRequested(new DeliveryCancellationRequestedEvent(orderId, Instant.now()));
+        log.info("배송 취소 이벤트 발행 완료: orderId={}", orderId);
         return orderMapper.toDomain(orderEntity);
     }
 
@@ -240,6 +278,7 @@ public class OrderService {
         
         // 재고 복구
         // FIXME: stock에서 정한 인터페이스에 맞추어 수정 필요 (251028 김현우)
+        // REFACTOR: 251112 박찬혁 재고 복구 이벤트 발행으로 대체결정
         // List<OrderProductEntity> products = orderProductRepository.findAll().stream()
         //     .filter(p -> p.getOrder().getId().equals(orderId))
         //     .toList();
@@ -343,5 +382,44 @@ public class OrderService {
         appendOrderStatus(orderId, OrderStatus.CANCELLED);
 
         orderRepository.save(order);
+    }
+    @Transactional
+    public Order createOrderForLoadTest() {
+        
+        // 부하 테스트용: 최소한의 필수 데이터만으로 주문 생성
+        UUID testCustomerId = UUID.randomUUID();
+        OrderEntity orderEntity = OrderEntity.builder()
+                // .id(orderId) // 랜덤으로 생성된 orderId 사용
+                .customerId(testCustomerId)
+                .totalAmount(10000) // 기본 금액
+                .orderName("부하테스트")
+                .status(OrderStatus.PENDING.getCode())
+                .build();
+        orderRepository.save(orderEntity);
+        UUID orderId = orderEntity.getId();
+        // 상태 이력 추가
+        appendOrderStatus(orderId, OrderStatus.PENDING);
+
+        log.info("부하 테스트용 orderId insert 완료: orderId={}", orderId);
+        // return orderEntity;
+
+         DeliveryRequestedEvent event = new DeliveryRequestedEvent(
+            orderId,
+            // addressEntity.getCustomerId(),
+            UUID.randomUUID(),
+            "부하테스트 주소",
+            "부하테스트 상세주소",
+            "12345",
+            "010-1234-5678",
+            "부하테스트 수취인",
+            "부하테스트용",
+            Instant.now()
+        );
+        deliveryEventPublisher.publishDeliveryRequested(event);
+        log.info("배송 요청 이벤트 발행 완료: orderId={}", orderId);
+        
+        // 주문 상태 업데이트       
+        appendOrderStatus(orderId, OrderStatus.COMPLETED);
+        return orderMapper.toDomain(orderEntity);
     }
 }
