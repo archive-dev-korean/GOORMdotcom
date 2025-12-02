@@ -2,12 +2,14 @@
 
 # 11/12 -> CI 될 때 자동으로 Order-delivery 통신 테스트도 돌아감감
 spring:
+  application:
+    name: "order-service"
   config:
     activate:
       on-profile: test
   datasource:
-    url: jdbc:h2:mem:order-service-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:order-service-test;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     username: sa
     password:
   jpa:
@@ -25,6 +27,21 @@ spring:
           default:
             connectTimeout: 1000
             readTimeout: 1000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  use-fqn: true
+
+server:
+  port: 8080
 
 service:
   user:
