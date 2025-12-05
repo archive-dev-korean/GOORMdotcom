@@ -55,6 +55,14 @@ jacocoTestReport {
                             '**/service/**',
                             '**/controller/**',
                             '**/repository/**'
+                    ],
+                    exclude: [
+                            '**/dto/**',
+                            '**/config/**',
+                            '**/exception/**',
+                            '**/enums/**',
+                            '**/settings/**',
+                            '**/mapper'
                     ])
                 })
         )
@@ -104,6 +112,9 @@ dependencies {
 
     //.env
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
+    //Opentelemetry
+    implementation "io.opentelemetry:opentelemetry-api"
 }
 
 dependencyManagement {
