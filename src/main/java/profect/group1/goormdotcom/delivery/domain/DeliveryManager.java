@@ -1,6 +1,5 @@
 package profect.group1.goormdotcom.delivery.domain;
 
-import java.time.LocalDateTime;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -12,23 +11,18 @@ import profect.group1.goormdotcom.delivery.repository.DeliveryStepHistoryReposit
 import profect.group1.goormdotcom.delivery.repository.DeliveryReturnStepHistoryRepository;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 import java.util.Optional;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import profect.group1.goormdotcom.delivery.domain.Delivery;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryEntity;
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryMapper;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryStatus;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryStepType;
-import profect.group1.goormdotcom.delivery.domain.DeliveryAddress;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryAddressEntity;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryStepHistoryEntity;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryReturnEntity;
@@ -40,15 +34,12 @@ import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryAddressMapp
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryStepHistoryMapper;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryReturnStatus;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryReturnStepType;
-import profect.group1.goormdotcom.delivery.domain.DeliveryReturn;
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryReturnMapper;
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryReturnAddressMapper;
-import java.util.stream.Collectors;
 import profect.group1.goormdotcom.delivery.infrastructure.client.DeliveryOrderClient;
 import org.springframework.context.ApplicationEventPublisher;
 import profect.group1.goormdotcom.kafka.event.DeliveryStartFailedEvent;
 import profect.group1.goormdotcom.kafka.event.DeliveryStartedEvent;
-import profect.group1.goormdotcom.kafka.DeliveryProducer;
 import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,7 +62,6 @@ public class DeliveryManager {
 
     private final DeliveryOrderClient orderClient;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final DeliveryProducer deliveryProducer;
 
 
     public Delivery getDeliveryByOrderId(UUID orderId) {

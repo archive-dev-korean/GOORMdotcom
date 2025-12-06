@@ -6,8 +6,6 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,18 +16,17 @@ import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmen
 import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmentRequestItemDto;
 import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmentResponseDto;
 import java.time.Instant;
-import profect.group1.goormdotcom.order.event.Delivery.DeliveryCancellationRequestedEvent;
+
 import profect.group1.goormdotcom.order.event.Delivery.DeliveryEventPublisherInterface;
 import profect.group1.goormdotcom.order.event.Delivery.DeliveryRequestedEvent;
 import profect.group1.goormdotcom.order.event.Stock.StockRollbackRequestedEvent;
 import profect.group1.goormdotcom.order.infrastructure.client.StockClient;
-import profect.group1.goormdotcom.kafka.OrderProducer;
-import profect.group1.goormdotcom.kafka.DeliveryProducer;
+import profect.group1.goormdotcom.kafka.producer.OrderProducer;
 import profect.group1.goormdotcom.order.controller.external.v1.dto.OrderItemDto;
 import profect.group1.goormdotcom.order.controller.external.v1.dto.OrderRequestDto;
 import profect.group1.goormdotcom.order.domain.Order;
 import profect.group1.goormdotcom.order.domain.enums.OrderStatus;
-import profect.group1.goormdotcom.order.domain.mapper.OrderMapper; //?
+import profect.group1.goormdotcom.order.domain.mapper.OrderMapper;
 import profect.group1.goormdotcom.order.repository.OrderAddressRepository;
 import profect.group1.goormdotcom.order.repository.OrderProductRepository;
 import profect.group1.goormdotcom.order.repository.OrderRepository;
@@ -59,7 +56,6 @@ public class OrderService {
 
     //Kafka Producer
     private final OrderProducer orderProducer;
-    private final DeliveryProducer deliveryProducer;
 
     public void appendOrderStatus(UUID orderId, OrderStatus status){   
         OrderEntity orderEntity = findOrderOrThrow(orderId);
