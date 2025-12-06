@@ -20,12 +20,12 @@ public class EventHandler {
     @Async
     public void handleDeliveryStartedEvent(DeliveryStartedEvent event) {
         log.info("배송 시작 이벤트 수신: orderId={}", event.orderId());
-        deliveryProducer.sendDeliveryStartedEvent("order-service-topic", event);
+        deliveryProducer.sendDeliveryStartedEvent("delivery-started-topic", event);
     }
     @TransactionalEventListener(phase = TransactionPhase.AFTER_ROLLBACK)
     @Async
     public void handleDeliveryStartFailedEvent(DeliveryStartFailedEvent event) {
         log.info("배송 시작 실패 이벤트 수신: orderId={}", event.orderId());
-        deliveryProducer.sendDeliveryStartFailedEvent("order-service-topic", event);
+        deliveryProducer.sendDeliveryStartFailedEvent("delivery-start-failed-topic", event);
     }
 }

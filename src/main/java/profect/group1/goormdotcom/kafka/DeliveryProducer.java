@@ -14,7 +14,7 @@ import profect.group1.goormdotcom.order.event.Delivery.DeliveryRequestedEvent;
 @Component
 @RequiredArgsConstructor
 public class DeliveryProducer {
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
     /**
@@ -23,23 +23,12 @@ public class DeliveryProducer {
      * @param event 배송 요청 이벤트
      */
     public void sendDeliveryStartedEvent(String topic, DeliveryStartedEvent event) {
-        try {
-            String message = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send(topic, message);
-            log.info("Kafka 메시지 발행 완료: topic={}, orderId={}", topic, event.orderId());
-        } catch (JsonProcessingException e) {
-            log.error("Kafka 메시지 직렬화 실패: topic={}, orderId={}", topic, event.orderId(), e);
-            throw new RuntimeException("Kafka 메시지 발행 실패", e);
-        }
+        kafkaTemplate.send(topic, event);
+        log.info("Kafka 메시지 발행 완료: topic={}, orderId={}", topic, event.orderId());
     }
+
     public void sendDeliveryStartFailedEvent(String topic, DeliveryStartFailedEvent event) {
-        try {
-            String message = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send(topic, message);
-            log.info("Kafka 메시지 발행 완료: topic={}, orderId={}", topic, event.orderId());
-        } catch (JsonProcessingException e) {
-            log.error("Kafka 메시지 직렬화 실패: topic={}, orderId={}", topic, event.orderId(), e);
-            throw new RuntimeException("Kafka 메시지 발행 실패", e);
-        }
+        kafkaTemplate.send(topic, event);
+        log.info("Kafka 메시지 발행 완료: topic={}, orderId={}", topic, event.orderId());
     }
 }

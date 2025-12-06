@@ -19,11 +19,17 @@ spring:
             readTimeout: 5000
 
   kafka:
+    local: ${KAFKA_LOCAL:false}
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     sasl.username: ${KAFKA_SASL_USERNAME}
     sasl.password: ${KAFKA_SASL_PASSWORD}
+
     consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP_ID}
+      properties:
+        request.timeout.ms: 3000
+    producer:
+      properties:
+        request.timeout.ms: 3000
 
   endpoints:
     web:
@@ -32,6 +38,10 @@ spring:
   endpoint:
     health:
       show-details: never
+  h2:
+    console:
+      settings:
+        web-allow-others: true
 
 springdoc:
   use-fqn: true
@@ -48,3 +58,4 @@ service:
     url: ${ORDER_SERVICE_URL}
   payment:
     url: ${PAYMENT_SERVICE_URL}
+

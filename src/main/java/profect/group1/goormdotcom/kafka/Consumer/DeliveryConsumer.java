@@ -1,4 +1,4 @@
-package profect.group1.goormdotcom.kafka.Consumer;
+package profect.group1.goormdotcom.kafka.consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +20,10 @@ public class DeliveryConsumer {
     private final ObjectMapper objectMapper;
     private final DeliveryService deliveryService;
 
-    @KafkaListener(topics = "delivery-service-topic", groupId = "order-service-delivery-group")
+    @KafkaListener(
+        topics = "delivery-requested-topic",
+        groupId = "delivery-requested-cg"
+    )
     public void DeliveryRequestedEvent(String message) {
         try {
             DeliveryRequestedEvent event = objectMapper.readValue(message, DeliveryRequestedEvent.class);
