@@ -17,18 +17,18 @@ import profect.group1.goormdotcom.common.auth.LoginUser;
 @Tag(name = "Order", description = "주문 API")
 public interface OrderApiDocs {
 
-	@Operation(summary = "주문 생성", security = { @SecurityRequirement(name = "bearerAuth") })
+	@Operation(summary = "주문 생성", security = { @SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
 	ApiResponse<Order> create(@RequestBody OrderRequestDto req, @LoginUser UUID userId);
 
-	@Operation(summary = "배송 전 주문 취소", description = "배송 전 주문 취소 및 환불", security = { @SecurityRequirement(name = "bearerAuth") })
+	@Operation(summary = "배송 전 주문 취소", description = "배송 전 주문 취소 및 환불", security = { @SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
 	ApiResponse<Order> deliveryBefore(@PathVariable UUID orderId);
 
-	@Operation(summary = "배송 후 주문 취소", description = "배송 후 주문 취소 및 반품", security = { @SecurityRequirement(name = "bearerAuth") })
+	@Operation(summary = "배송 후 주문 취소", description = "배송 후 주문 취소 및 반품", security = { @SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
 	ApiResponse<Order> cancel(@PathVariable UUID orderId);
 
-	@Operation(summary = "주문 전체 조회", security = { @SecurityRequirement(name = "bearerAuth") })
+	@Operation(summary = "주문 전체 조회", security = { @SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
 	ApiResponse<List<Order>> getAllOrders();
 
-	@Operation(summary = "주문 단건 조회", security = { @SecurityRequirement(name = "bearerAuth") })
+	@Operation(summary = "주문 단건 조회", security = { @SecurityRequirement(name = "bearerAuth"), @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
 	ApiResponse<Order> getOne(@PathVariable UUID id);
 }

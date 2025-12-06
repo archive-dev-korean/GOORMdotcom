@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,7 +24,8 @@ public interface CartApiDocs {
 
 	@Operation(
 			summary = "장바구니 조회",
-			description = "현재 사용자의 장바구니 정보를 조회합니다."
+			description = "현재 사용자의 장바구니 정보를 조회합니다.",
+			security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") }
 	)
 	@ApiResponses({
 			@ApiResponse(
@@ -81,7 +83,8 @@ public interface CartApiDocs {
 
 	@Operation(
 			summary = "장바구니에 아이템 추가",
-			description = "장바구니에 새로운 아이템을 추가하거나 기존 아이템의 수량을 증가시킵니다."
+			description = "장바구니에 새로운 아이템을 추가하거나 기존 아이템의 수량을 증가시킵니다.",
+			security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") }
 	)
 	@ApiResponses({
 			@ApiResponse(
@@ -141,7 +144,8 @@ public interface CartApiDocs {
 
 	@Operation(
 			summary = "장바구니 아이템 수량 수정",
-			description = "장바구니의 특정 아이템 수량을 수정합니다."
+			description = "장바구니의 특정 아이템 수량을 수정합니다.",
+			security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") }
 	)
 	@ApiResponses({
 			@ApiResponse(
@@ -203,7 +207,8 @@ public interface CartApiDocs {
 
 	@Operation(
 			summary = "장바구니 아이템 삭제",
-			description = "장바구니에서 특정 아이템을 삭제합니다."
+			description = "장바구니에서 특정 아이템을 삭제합니다.",
+			security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") }
 	)
 	@ApiResponses({
 			@ApiResponse(
@@ -255,7 +260,8 @@ public interface CartApiDocs {
 
 	@Operation(
 			summary = "장바구니 아이템 일괄 삭제",
-			description = "장바구니에서 여러 아이템을 한 번에 삭제합니다."
+			description = "장바구니에서 여러 아이템을 한 번에 삭제합니다.",
+			security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") }
 	)
 	@ApiResponses({
 			@ApiResponse(
@@ -315,7 +321,8 @@ public interface CartApiDocs {
 
 	@Operation(
 			summary = "장바구니 전체 비우기",
-			description = "장바구니의 모든 아이템을 삭제합니다."
+			description = "장바구니의 모든 아이템을 삭제합니다.",
+			security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") }
 	)
 	@ApiResponses({
 			@ApiResponse(
