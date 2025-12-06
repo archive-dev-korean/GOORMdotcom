@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.ArgumentCaptor;
 import profect.group1.goormdotcom.common.apiPayload.ApiResponse;
+import profect.group1.goormdotcom.kafka.producer.OrderProducer;
 import profect.group1.goormdotcom.order.controller.external.v1.dto.OrderItemDto;
 import profect.group1.goormdotcom.order.controller.external.v1.dto.OrderRequestDto;
 import profect.group1.goormdotcom.order.domain.Order;
@@ -16,6 +17,7 @@ import profect.group1.goormdotcom.order.domain.mapper.OrderMapper;
 import profect.group1.goormdotcom.order.event.Delivery.DeliveryEventPublisherInterface;
 import profect.group1.goormdotcom.order.event.Delivery.DeliveryCancellationRequestedEvent;
 import profect.group1.goormdotcom.order.event.Delivery.DeliveryRequestedEvent;
+import profect.group1.goormdotcom.order.event.Stock.StockRollbackRequestedEvent;
 import profect.group1.goormdotcom.order.infrastructure.client.DeliveryClient;
 import profect.group1.goormdotcom.order.infrastructure.client.PaymentClient;
 import profect.group1.goormdotcom.order.infrastructure.client.StockClient;
@@ -26,6 +28,7 @@ import profect.group1.goormdotcom.order.repository.entity.*;
 import profect.group1.goormdotcom.order.service.OrderService;
 
 import java.lang.reflect.Field;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,6 +55,8 @@ class OrderServiceTest {
     @Mock private DeliveryClient deliveryClient;
     @Mock private OrderMapper orderMapper;
     @Mock private DeliveryEventPublisherInterface deliveryEventPublisher;
+
+    @Mock private OrderProducer orderProducer;
 
     @Mock
     private OrderRequestDto orderRequestDto;
@@ -205,7 +210,7 @@ class OrderServiceTest {
         // then
         assertThat(result.getId()).isEqualTo(orderId);
 
-        verify(deliveryEventPublisher).publishDeliveryRequested(any(DeliveryRequestedEvent.class));
+        verify(orderProducer, times(1)).send(any(String.class), any(DeliveryRequestedEvent.class));
         ArgumentCaptor<OrderStatusEntity> statusCaptor = ArgumentCaptor.forClass(OrderStatusEntity.class);
         verify(orderStatusRepository, atLeastOnce()).save(statusCaptor.capture());
         assertThat(statusCaptor.getValue().getStatus()).isEqualTo(OrderStatus.PAID.getCode());
@@ -223,12 +228,6 @@ class OrderServiceTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(orderEntity));
         when(orderProductRepository.findByOrderId(orderId)).thenReturn(List.of(orderProductEntity));
 
-        StockAdjustmentResponseDto stockResult = mock(StockAdjustmentResponseDto.class);
-        when(stockResult.status()).thenReturn(true);
-
-        when(stockClient.increaseStock(any(StockAdjustmentRequestDto.class)))
-                .thenReturn(ApiResponse.onSuccess(stockResult));
-
         when(orderStatusRepository.save(any(OrderStatusEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -240,9 +239,9 @@ class OrderServiceTest {
         // then
         assertThat(result.getId()).isEqualTo(orderId);
 
-        verify(stockClient, times(1)).increaseStock(any(StockAdjustmentRequestDto.class));
+        verify(orderProducer, times(1)).send(any(String.class), any(StockRollbackRequestedEvent.class));
         verify(orderStatusRepository, times(1)).save(any(OrderStatusEntity.class));
-        verify(deliveryEventPublisher).publishDeliveryCancellationRequested(any(DeliveryCancellationRequestedEvent.class));
+//        verify(deliveryEventPublisher).publishDeliveryCancellationRequested(any(DeliveryCancellationRequestedEvent.class));
         verifyNoInteractions(paymentClient, deliveryClient);
     }
 

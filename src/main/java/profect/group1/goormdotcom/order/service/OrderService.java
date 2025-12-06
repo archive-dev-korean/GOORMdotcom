@@ -192,7 +192,7 @@ public class OrderService {
         //TODO:히스토리저장
         appendOrderStatus(orderId, OrderStatus.FAILED);
         // 배송 취소 이벤트 발행 (배송이 이미 생성된 경우를 대비) ->> 나중 대비 지금 사용 X
-        // deliveryEventPublisher.publishDeliveryCancellationRequested(new DeliveryCancellationRequestedEvent(orderId, Instant.now()));
+//         deliveryEventPublisher.publishDeliveryCancellationRequested(new DeliveryCancellationRequestedEvent(orderId, Instant.now()));
         // log.info("배송 취소 이벤트 발행 완료: orderId={}", orderId);
         return orderMapper.toDomain(orderEntity);
     }

@@ -152,7 +152,7 @@ public class DeliveryManager {
             String errorMessage = e.getMessage() != null ? e.getMessage() : "배송 시작 실패";
             applicationEventPublisher.publishEvent(new DeliveryStartFailedEvent(orderId, errorMessage, Instant.now()));
             log.error("배송 시작 실패: orderId={}", orderId, e);
-            throw new RuntimeException("배송 시작 실패", e);
+            throw e;
         }
     }
 
