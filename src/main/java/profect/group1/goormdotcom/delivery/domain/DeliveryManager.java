@@ -12,6 +12,7 @@ import profect.group1.goormdotcom.delivery.repository.DeliveryReturnStepHistoryR
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.Arrays;
@@ -140,17 +141,22 @@ public class DeliveryManager {
                 DeliveryStepType.DONE
             ));
 
+
+
             // 배송 생성 성공 시 이벤트 발행
             if (deliveryId != null && delivery != null) {
-                applicationEventPublisher.publishEvent(new DeliveryStartedEvent(orderId, deliveryId, Instant.now()));
-                log.info("배송 시작 이벤트 발행: orderId={}, deliveryId={}", orderId, deliveryId);
+                LocalDateTime occuredAt = LocalDateTime.now();
+                DeliveryStartedEvent deliveryStartedEvent = new DeliveryStartedEvent(orderId, deliveryId, occuredAt);
+                applicationEventPublisher.publishEvent(deliveryStartedEvent);
             }
 
             return delivery;
         } catch (Exception e) {
             // 배송 시작 실패 시 이벤트 발행
             String errorMessage = e.getMessage() != null ? e.getMessage() : "배송 시작 실패";
-            applicationEventPublisher.publishEvent(new DeliveryStartFailedEvent(orderId, errorMessage, Instant.now()));
+            LocalDateTime occuredAt = LocalDateTime.now();
+            DeliveryStartFailedEvent deliveryStartFailedEvent = new DeliveryStartFailedEvent(orderId, errorMessage, occuredAt);
+            applicationEventPublisher.publishEvent(deliveryStartFailedEvent);
             log.error("배송 시작 실패: orderId={}", orderId, e);
             throw e;
         }

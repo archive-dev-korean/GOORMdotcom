@@ -21,7 +21,7 @@ public class DeliveryConsumer {
     private final DeliveryService deliveryService;
 
     @KafkaListener(
-        topics = "delivery-requested-topic",
+        topics = "delivery-service-topic",
         groupId = "delivery-requested-cg"
     )
     public void DeliveryRequestedEvent(String message) {

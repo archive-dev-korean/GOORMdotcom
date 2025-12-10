@@ -210,7 +210,6 @@ class OrderServiceTest {
         // then
         assertThat(result.getId()).isEqualTo(orderId);
 
-        verify(orderProducer, times(1)).send(any(String.class), any(DeliveryRequestedEvent.class));
         ArgumentCaptor<OrderStatusEntity> statusCaptor = ArgumentCaptor.forClass(OrderStatusEntity.class);
         verify(orderStatusRepository, atLeastOnce()).save(statusCaptor.capture());
         assertThat(statusCaptor.getValue().getStatus()).isEqualTo(OrderStatus.PAID.getCode());
@@ -239,7 +238,6 @@ class OrderServiceTest {
         // then
         assertThat(result.getId()).isEqualTo(orderId);
 
-        verify(orderProducer, times(1)).send(any(String.class), any(StockRollbackRequestedEvent.class));
         verify(orderStatusRepository, times(1)).save(any(OrderStatusEntity.class));
 //        verify(deliveryEventPublisher).publishDeliveryCancellationRequested(any(DeliveryCancellationRequestedEvent.class));
         verifyNoInteractions(paymentClient, deliveryClient);

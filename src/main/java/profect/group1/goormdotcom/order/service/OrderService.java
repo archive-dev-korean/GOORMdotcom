@@ -1,5 +1,6 @@
 package profect.group1.goormdotcom.order.service;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -10,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import profect.group1.goormdotcom.common.apiPayload.ApiResponse;
+import profect.group1.goormdotcom.kafka.event.DeliveryRequestedEvent;
+import profect.group1.goormdotcom.kafka.event.StockRollbackRequestedEvent;
 import profect.group1.goormdotcom.order.infrastructure.client.DeliveryClient;
 import profect.group1.goormdotcom.order.infrastructure.client.PaymentClient;
 import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmentRequestDto;
@@ -18,8 +21,7 @@ import profect.group1.goormdotcom.order.infrastructure.client.dto.StockAdjustmen
 import java.time.Instant;
 
 import profect.group1.goormdotcom.order.event.Delivery.DeliveryEventPublisherInterface;
-import profect.group1.goormdotcom.order.event.Delivery.DeliveryRequestedEvent;
-import profect.group1.goormdotcom.order.event.Stock.StockRollbackRequestedEvent;
+
 import profect.group1.goormdotcom.order.infrastructure.client.StockClient;
 import profect.group1.goormdotcom.kafka.producer.OrderProducer;
 import profect.group1.goormdotcom.order.controller.external.v1.dto.OrderItemDto;
@@ -144,19 +146,30 @@ public class OrderService {
         OrderAddressEntity addressEntity = orderAddressRepository.findByOrderId(orderId).orElseThrow(() -> new IllegalStateException("배송지 정보를 찾을 수 없습니다. orderId=" + orderId));
 
         appendOrderStatus(orderId, OrderStatus.PAID);
-        
+
+        DeliveryRequestedEvent deliveryRequestedEvent = new DeliveryRequestedEvent(
+                orderId,
+                addressEntity.getCustomerId(),
+                addressEntity.getAddress(),
+                addressEntity.getAddressDetail(),
+                addressEntity.getZipcode(),
+                addressEntity.getPhone(),
+                addressEntity.getName(),
+                addressEntity.getDeliveryMemo()
+        );
+
+        LocalDateTime occuredAt = LocalDateTime.now();
         // Kafka로 발행 (외부 서비스와 통신)
-        orderProducer.send("delivery-requested-topic", new DeliveryRequestedEvent(
-            orderId,
-            addressEntity.getCustomerId(),
-            addressEntity.getAddress(),
-            addressEntity.getAddressDetail(),
-            addressEntity.getZipcode(),
-            addressEntity.getPhone(),
-            addressEntity.getName(),
-            addressEntity.getDeliveryMemo(),
-            Instant.now()
-        ));
+        orderProducer.send(
+            "delivery-service-topic",
+            orderId.toString(),
+            "DeliveryRequested",
+            "Delivery",
+            occuredAt,
+            1,
+            "Order-service",
+            deliveryRequestedEvent
+        );
         
         log.info("배송 요청 이벤트 발행 완료: orderId={}", orderId);
         return orderMapper.toDomain(orderEntity);
@@ -178,22 +191,30 @@ public class OrderService {
                 ))
                 .toList();
 
-        StockRollbackRequestedEvent event = new StockRollbackRequestedEvent(
-                orderId,
-                stockItems,
-                Instant.now()
+
+        StockRollbackRequestedEvent stockRollbackRequestedEvent = new StockRollbackRequestedEvent(
+            orderId,
+            stockItems
         );
 
-        // Kafka로 재고 롤백 이벤트 발행
-        orderProducer.send("stock-rollback-requested-topic", event);
+        LocalDateTime occuredAt = LocalDateTime.now();
+        // Kafka로 발행 (외부 서비스와 통신)
+        orderProducer.send(
+                "stock-service-topic",
+                orderId.toString(),
+                "StockRollbackRequested",
+                "Stock",
+                occuredAt,
+                1,
+                "Order-service",
+                stockRollbackRequestedEvent
+        );
+
 
         log.info("재고 복구 완료: orderId={}", orderId);
 
         //TODO:히스토리저장
         appendOrderStatus(orderId, OrderStatus.FAILED);
-        // 배송 취소 이벤트 발행 (배송이 이미 생성된 경우를 대비) ->> 나중 대비 지금 사용 X
-//         deliveryEventPublisher.publishDeliveryCancellationRequested(new DeliveryCancellationRequestedEvent(orderId, Instant.now()));
-        // log.info("배송 취소 이벤트 발행 완료: orderId={}", orderId);
         return orderMapper.toDomain(orderEntity);
     }
 
@@ -202,7 +223,6 @@ public class OrderService {
         log.info("취소 처리 시작: orderId={}", orderId);
         
         OrderEntity orderEntity = findOrderOrThrow(orderId);
-
 
         // 취소 가능여부 확인
         ApiResponse<Integer> cancellableResponse = deliveryClient.checkCancellable(orderId);
@@ -328,46 +348,5 @@ public class OrderService {
         appendOrderStatus(orderId, OrderStatus.CANCELLED);
 
         orderRepository.save(order);
-    }
-
-    // 부하 테스트용 주문 생성
-    @Transactional
-    public Order createOrderForLoadTest() {
-        
-        // 부하 테스트용: 최소한의 필수 데이터만으로 주문 생성
-        UUID testCustomerId = UUID.randomUUID();
-        OrderEntity orderEntity = OrderEntity.builder()
-                // .id(orderId) // 랜덤으로 생성된 orderId 사용
-                .customerId(testCustomerId)
-                .totalAmount(10000) // 기본 금액
-                .orderName("부하테스트")
-                .status(OrderStatus.PENDING.getCode())
-                .build();
-        orderRepository.save(orderEntity);
-        UUID orderId = orderEntity.getId();
-        // 상태 이력 추가
-        appendOrderStatus(orderId, OrderStatus.PENDING);
-
-        log.info("부하 테스트용 orderId insert 완료: orderId={}", orderId);
-        // return orderEntity;
-
-         DeliveryRequestedEvent event = new DeliveryRequestedEvent(
-            orderId,
-            // addressEntity.getCustomerId(),
-            UUID.randomUUID(),
-            "부하테스트 주소",
-            "부하테스트 상세주소",
-            "12345",
-            "010-1234-5678",
-            "부하테스트 수취인",
-            "부하테스트용",
-            Instant.now()
-        );
-        deliveryEventPublisher.publishDeliveryRequested(event);
-        log.info("배송 요청 이벤트 발행 완료: orderId={}", orderId);
-        
-        // 주문 상태 업데이트       
-        appendOrderStatus(orderId, OrderStatus.COMPLETED);
-        return orderMapper.toDomain(orderEntity);
     }
 }

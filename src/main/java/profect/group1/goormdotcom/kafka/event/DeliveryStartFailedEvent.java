@@ -1,12 +1,19 @@
 package profect.group1.goormdotcom.kafka.event;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-public record DeliveryStartFailedEvent(
-    UUID orderId,
-    String errorMessage,
-    Instant occurredAt
-) {
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+public class DeliveryStartFailedEvent{
+    private UUID orderId;
+    private String errorMessage;
+    private LocalDateTime eventTime;
 }
 

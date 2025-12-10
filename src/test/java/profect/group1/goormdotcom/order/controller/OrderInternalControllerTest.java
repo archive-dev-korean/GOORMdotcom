@@ -37,20 +37,6 @@ class OrderInternalControllerTest {
     }
 
     @Test
-    @DisplayName("결제 성공 콜백 시 서비스 createOrderForLoadTest 호출")
-    void completePayment_success() throws Exception {
-        // given
-        when(orderService.createOrderForLoadTest()).thenReturn(mock(Order.class));
-
-        // when
-        mockMvc.perform(post("/internal/v1/orders/payment/success"))
-                // then
-                .andExpect(status().isOk());
-
-        verify(orderService).createOrderForLoadTest();
-    }
-
-    @Test
     @DisplayName("결제 실패 콜백 시 서비스 failPayment 호출")
     void failPayment_success() throws Exception {
         // given

@@ -4,15 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
-public class DeliveryStartedEvent{
+public class StockRollbackRequestedEvent {
     private UUID orderId;
-    private UUID deliveryId;
-    private LocalDateTime eventTime;
+    private List<StockItem> items;
+
+    public record StockItem(UUID productId, int quantity) {
+    }
 }
