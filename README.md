@@ -27,9 +27,16 @@
 ![diagram-sequence](https://github.com/user-attachments/assets/2d727c20-5c17-4021-a3f5-91265e83d112)
 
 ## 보상 트랜잭션
+- 주문 생성 이후 결제 실패/재고 부족/배송 생성 실패 등의 상황을 고려해 보상 트랜잭션을 설계
+- 실패 이벤트 수신 시 주문 상태를 변경하고, 이전 단계 작업을 rollback 하도록 이벤트를 발행
+- 각 서비스는 보상 이벤트를 수신하여 자신의 로컬 트랜잭션을 되돌림
+
 <img width="2114" height="683" alt="프로펙트 클라우드 1팀  토픽-이벤트 설계 drawio (4)" src="https://github.com/user-attachments/assets/9689045f-6482-4b49-86f4-4e3d5fd3b5bb" />
 
 ## DLQ
+- 재시도 후에도 처리 불가능한 이벤트는 DLQ로 격리하여 메인 컨슈머 지연을 방지
+- DLQ를 기반으로 원인 분석 및 재처리 전략을 운영 가능하게 설계
+
 <img width="1753" height="762" alt="프로펙트 클라우드 1팀  토픽-이벤트 설계 drawio (2)" src="https://github.com/user-attachments/assets/b04d20b0-ac58-4a8f-bb5e-fe7662bf29d0" />
 
 ## 파티셔닝 전략
@@ -44,6 +51,12 @@
 <img width="1117" height="590" alt="프로젝트 최종 발표 (1)" src="https://github.com/user-attachments/assets/f6e33dcd-6c67-4a84-b35c-fb5a88e8ed4c" />
 
 ## Kafka 토픽 설계
+### 토픽 예시(Order-Service)
+| Topic | Producer | Consumer Group | EventType | Key | 목적 |
+|------|----------|----------------|----------|-----|------|
+| `order-service-topic` | Delivery-Service | Order-Service | `DELIVERY_CREATED_SUCCESS` | `orderId` | 주문 상태 갱신 |
+| `order-service-topic` | Delivery-Service | Order-Service | `DELIVERY_CREATED_FAIL` | `orderId` | 보상 트랜잭션 트리거 |
+| `order-service-topic` | Stock-Service | Order-Service | `STOCK_RESTORE_FAIL` | `orderId` | 장애 감지 및 후속 처리 |
 - 서비스 중심 토픽 설계  
    - 프로듀서 파티셔닝 전략과 맞춰, 각 서비스별 도메인 특성에 맞게 독립적인 파티션 키 할당하여 관리
 <img width="741" height="261" alt="프로펙트 클라우드 1팀  토픽-이벤트 설계 drawio (1)" src="https://github.com/user-attachments/assets/64b86445-dc09-490b-b9be-a3bd2380862a" />
