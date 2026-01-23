@@ -17,16 +17,16 @@ import profect.group1.goormdotcom.delivery.controller.external.v1.dto.request.Cr
 @Tag(name = "Delivery (external)", description = "배송 API (외부 클라이언트 노출용)")
 public interface DeliveryApiDocs {
 
-    @Operation(summary = "배송 정보 조회", description = "주문 ID를 기반으로 배송 정보를 조회합니다.")
+    @Operation(summary = "배송 정보 조회", description = "주문 ID를 기반으로 배송 정보를 조회합니다.", security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
     ApiResponse<DeliveryResponseDto> getDeliveryByOrder(@RequestParam UUID orderId);
 
-    @Operation(summary = "구름닷컴 배송지 조회", description = "MASTER only", security = { @SecurityRequirement(name = "bearerAuth") })
+    @Operation(summary = "구름닷컴 배송지 조회", description = "MASTER only", security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
     ApiResponse<DeliveryAddress> getGoormAddress();
 
-    @Operation(summary = "구름닷컴 배송지 생성", description = "MASTER only", security = { @SecurityRequirement(name = "bearerAuth") })
+    @Operation(summary = "구름닷컴 배송지 생성", description = "MASTER only", security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
     ApiResponse<DeliveryAddress> createGoormAddress(@RequestBody CreateAddressRequestDto body);
 
-    @Operation(summary = "구름닷컴 배송지 수정", description = "MASTER only", security = { @SecurityRequirement(name = "bearerAuth") })
+    @Operation(summary = "구름닷컴 배송지 수정", description = "MASTER only", security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") })
     ApiResponse<DeliveryAddress> updateGoormAddress(
         @RequestBody CreateAddressRequestDto body
     );

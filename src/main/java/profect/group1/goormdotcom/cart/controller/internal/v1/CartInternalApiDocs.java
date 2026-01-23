@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,7 +24,8 @@ public interface CartInternalApiDocs {
 
 	@Operation(
 			summary = "장바구니 생성",
-			description = "회원가입 한 사용자의 장바구니를 생성한다."
+			description = "회원가입 한 사용자의 장바구니를 생성한다.",
+			security = { @SecurityRequirement(name = "User-Id"), @SecurityRequirement(name = "User-Roles") }
 	)
 	@ApiResponses({
 			@ApiResponse(

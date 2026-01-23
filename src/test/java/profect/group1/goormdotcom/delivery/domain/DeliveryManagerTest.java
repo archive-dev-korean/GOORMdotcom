@@ -212,8 +212,5 @@ public class DeliveryManagerTest {
         assertThrows(IllegalArgumentException.class, () -> {
             deliveryManager.startDelivery(orderId, customerId, "address", "detail", "zip", "phone", "name", "memo");
         });
-        
-        // Note: 단위 테스트에서는 실제 트랜잭션이 없어서 TransactionSynchronization이 동작하지 않을 수 있습니다.
-        // 통합 테스트를 통해 실제 롤백 감지를 검증해야 합니다.
     }
 }
