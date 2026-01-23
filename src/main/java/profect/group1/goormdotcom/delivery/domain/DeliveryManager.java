@@ -1,6 +1,5 @@
 package profect.group1.goormdotcom.delivery.domain;
 
-import java.time.LocalDateTime;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
@@ -12,23 +11,19 @@ import profect.group1.goormdotcom.delivery.repository.DeliveryStepHistoryReposit
 import profect.group1.goormdotcom.delivery.repository.DeliveryReturnStepHistoryRepository;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-import profect.group1.goormdotcom.delivery.domain.Delivery;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryEntity;
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryMapper;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryStatus;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryStepType;
-import profect.group1.goormdotcom.delivery.domain.DeliveryAddress;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryAddressEntity;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryStepHistoryEntity;
 import profect.group1.goormdotcom.delivery.repository.entity.DeliveryReturnEntity;
@@ -40,15 +35,16 @@ import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryAddressMapp
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryStepHistoryMapper;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryReturnStatus;
 import profect.group1.goormdotcom.delivery.domain.enums.DeliveryReturnStepType;
-import profect.group1.goormdotcom.delivery.domain.DeliveryReturn;
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryReturnMapper;
 import profect.group1.goormdotcom.delivery.repository.mapper.DeliveryReturnAddressMapper;
-import java.util.stream.Collectors;
 import profect.group1.goormdotcom.delivery.infrastructure.client.DeliveryOrderClient;
 import org.springframework.context.ApplicationEventPublisher;
-import profect.group1.goormdotcom.delivery.event.DeliveryStartFailedEvent;
+import profect.group1.goormdotcom.kafka.event.DeliveryStartFailedEvent;
+import profect.group1.goormdotcom.kafka.event.DeliveryStartedEvent;
 import java.time.Instant;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeliveryManager {
@@ -94,76 +90,76 @@ public class DeliveryManager {
 
     @Transactional
     public Delivery startDelivery(final UUID orderId, final UUID customerId, final String address, final String addressDetail, final String zipcode, final String phone, final String name, final String deliveryMemo) {
-        // 1. TransactionSynchronization 등록 (롤백 감지)
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCompletion(int status) {
-                    if (status == TransactionSynchronization.STATUS_ROLLED_BACK) {
-                        // Delivery 트랜잭션 롤백 감지 - 보상 이벤트 발행
-                        applicationEventPublisher.publishEvent(
-                            DeliveryStartFailedEvent.builder()
-                                .orderId(orderId)
-                                .errorMessage("배송 시작 중 오류가 발생하여 롤백되었습니다.")
-                                .occurredAt(Instant.now())
-                                .build()
-                        );
-                    }
-                }
-            });
+        try {
+            // 배송 시작 로직 실행 (예외 발생 시 자동으로 롤백됨)
+            GoormAddressEntity goormAddressEntity = this.goormAddressRepo.findTopByOrderByCreatedAtDesc().orElseThrow(() -> new IllegalArgumentException("Goorm address not found"));
+            
+            // insert delivery
+            DeliveryEntity deliveryEntity = DeliveryEntity.builder()
+                .orderId(orderId)
+                .customerId(customerId)
+                .status(DeliveryStatus.PENDING.getCode())
+                .build();
+            
+            this.repo.save(deliveryEntity);
+            UUID deliveryId = deliveryEntity.getId();
+            Delivery delivery = DeliveryMapper.toDomain(deliveryEntity);
+
+            // insert address
+            DeliveryAddressEntity deliveryAddressEntity = DeliveryAddressEntity.builder()
+                .deliveryId(deliveryId)
+                .senderAddress(goormAddressEntity.getAddress())
+                .senderAddressDetail(goormAddressEntity.getAddressDetail())
+                .senderZipcode(goormAddressEntity.getZipcode())
+                .senderPhone(goormAddressEntity.getPhone())
+                .senderName(goormAddressEntity.getName())
+                .receiverAddress(address)
+                .receiverAddressDetail(addressDetail)
+                .receiverZipcode(zipcode)
+                .receiverPhone(phone)
+                .receiverName(name)
+                .deliveryMemo(deliveryMemo)
+                .build();
+            this.addressRepo.save(deliveryAddressEntity);
+
+            delivery.setSenderAddress(this.deliveryAddressMapper.toDomainOfSender(deliveryAddressEntity));
+            delivery.setReceiverAddress(this.deliveryAddressMapper.toDomainOfReceiver(deliveryAddressEntity));
+
+            // insert step history
+            DeliveryStepHistoryEntity stepHistoryEntity = DeliveryStepHistoryEntity.builder()
+                .deliveryId(deliveryId)
+                .stepType(DeliveryStepType.INIT.getCode())
+                .build();
+            this.stepHistoryRepo.save(stepHistoryEntity);
+
+            // NOTE: 실제 배송시스템 구현 대신 30초마다 배송단계 자동진행.
+            // (INIT) -> READY -> HUB -> STARTED -> DONE
+            scheduleStepProgression(deliveryId, Arrays.asList(
+                DeliveryStepType.READY,
+                DeliveryStepType.HUB,
+                DeliveryStepType.STARTED,
+                DeliveryStepType.DONE
+            ));
+
+
+
+            // 배송 생성 성공 시 이벤트 발행
+            if (deliveryId != null && delivery != null) {
+                LocalDateTime occuredAt = LocalDateTime.now();
+                DeliveryStartedEvent deliveryStartedEvent = new DeliveryStartedEvent(orderId, deliveryId, occuredAt);
+                applicationEventPublisher.publishEvent(deliveryStartedEvent);
+            }
+
+            return delivery;
+        } catch (Exception e) {
+            // 배송 시작 실패 시 이벤트 발행
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "배송 시작 실패";
+            LocalDateTime occuredAt = LocalDateTime.now();
+            DeliveryStartFailedEvent deliveryStartFailedEvent = new DeliveryStartFailedEvent(orderId, errorMessage, occuredAt);
+            applicationEventPublisher.publishEvent(deliveryStartFailedEvent);
+            log.error("배송 시작 실패: orderId={}", orderId, e);
+            throw e;
         }
-
-        // 2. 배송 시작 로직 실행 (예외 발생 시 자동으로 롤백됨)
-        GoormAddressEntity goormAddressEntity = this.goormAddressRepo.findTopByOrderByCreatedAtDesc().orElseThrow(() -> new IllegalArgumentException("Goorm address not found"));
-        
-        // insert delivery
-        DeliveryEntity deliveryEntity = DeliveryEntity.builder()
-            .orderId(orderId)
-            .customerId(customerId)
-            .status(DeliveryStatus.PENDING.getCode())
-            .build();
-        
-        this.repo.save(deliveryEntity);
-        UUID deliveryId = deliveryEntity.getId();
-        Delivery delivery = DeliveryMapper.toDomain(deliveryEntity);
-
-        // insert address
-        DeliveryAddressEntity deliveryAddressEntity = DeliveryAddressEntity.builder()
-            .deliveryId(deliveryId)
-            .senderAddress(goormAddressEntity.getAddress())
-            .senderAddressDetail(goormAddressEntity.getAddressDetail())
-            .senderZipcode(goormAddressEntity.getZipcode())
-            .senderPhone(goormAddressEntity.getPhone())
-            .senderName(goormAddressEntity.getName())
-            .receiverAddress(address)
-            .receiverAddressDetail(addressDetail)
-            .receiverZipcode(zipcode)
-            .receiverPhone(phone)
-            .receiverName(name)
-            .deliveryMemo(deliveryMemo)
-            .build();
-        this.addressRepo.save(deliveryAddressEntity);
-
-        delivery.setSenderAddress(this.deliveryAddressMapper.toDomainOfSender(deliveryAddressEntity));
-        delivery.setReceiverAddress(this.deliveryAddressMapper.toDomainOfReceiver(deliveryAddressEntity));
-
-        // insert step history
-        DeliveryStepHistoryEntity stepHistoryEntity = DeliveryStepHistoryEntity.builder()
-            .deliveryId(deliveryId)
-            .stepType(DeliveryStepType.INIT.getCode())
-            .build();
-        this.stepHistoryRepo.save(stepHistoryEntity);
-
-        // NOTE: 실제 배송시스템 구현 대신 30초마다 배송단계 자동진행.
-        // (INIT) -> READY -> HUB -> STARTED -> DONE
-        scheduleStepProgression(deliveryId, Arrays.asList(
-            DeliveryStepType.READY,
-            DeliveryStepType.HUB,
-            DeliveryStepType.STARTED,
-            DeliveryStepType.DONE
-        ));
-
-        return delivery;
     }
 
     @Transactional

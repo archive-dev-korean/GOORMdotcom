@@ -9,7 +9,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
-import profect.group1.goormdotcom.delivery.event.DeliveryStartFailedEvent;
+import profect.group1.goormdotcom.kafka.event.DeliveryStartFailedEvent;
 import profect.group1.goormdotcom.delivery.repository.GoormAddressRepository;
 
 import java.util.UUID;
@@ -71,7 +71,7 @@ class DeliveryManagerRollbackTest {
 
         // then - 보상 이벤트가 발행되었는지 확인
         long eventCount = applicationEvents.stream(DeliveryStartFailedEvent.class)
-            .filter(event -> event.orderId().equals(orderId))
+            .filter(event -> event.getOrderId().equals(orderId))
             .count();
         
         assertThat(eventCount)
@@ -111,7 +111,7 @@ class DeliveryManagerRollbackTest {
 
         // then - 보상 이벤트가 발행되지 않았는지 확인
         long eventCount = applicationEvents.stream(DeliveryStartFailedEvent.class)
-            .filter(event -> event.orderId().equals(orderId))
+            .filter(event -> event.getOrderId().equals(orderId))
             .count();
         
         assertThat(eventCount)
