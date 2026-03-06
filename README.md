@@ -8,10 +8,10 @@
 - Order-Delivery-Cart 도메인을 통합한 Order-Service 서비스 구현
 - Kafka 기반 EDA에서 SAGA 패턴을 적용해 보상 트랜잭션을 설계·구현하고, 최종적 일관성을 확보하여 데이터 정합성 유지
 - AWS MSK Kafka 환경에 맞춘 Topic/Partition/Consumer Group 설계 경험
-# 사용 기술 및 개발 환경
+## 사용 기술 및 개발 환경
 - Language: Java 17
 - Framework: Spring Boot, Spring Data JPA
-- Database: PostgreSQL (prod), H2 (local)
+- Database: PostgreSQL (prod), H2 (dev)
 - Messaging: Kafka (AWS MSK)
 - Infra/DevOps: Docker
 - Tools: Git, Jira, Notion, Slack
