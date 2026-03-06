@@ -15,7 +15,7 @@
 - Messaging: Kafka (AWS MSK)
 - Infra/DevOps: Docker
 - Tools: Git, Jira, Notion, Slack
-
+<!--
 # 내용
 ## 전체 서비스 인프라
 <img width="2981" height="2250" alt="프로펙트 클라우드 1팀  아키텍처 3차 drawio" src="https://github.com/user-attachments/assets/09f017bc-d09d-4840-8dec-2c7b5bbe00d2" />
@@ -69,5 +69,10 @@
 - 해결 : EventEnvelope 객체를 도입해 도메인 이벤트 객체를 Envelope으로 감싸고, 이벤트 객체를 직렬화한 값을 payload에 저장하는 방식으로 이벤트 설계
 <img width="720" height="26" alt="image (2)" src="https://github.com/user-attachments/assets/a1ea7c1f-758c-4bd4-a3c8-d6b7d24d80c9" />
 <img width="480" height="232" alt="image (1)" src="https://github.com/user-attachments/assets/d2fa54db-bcce-4183-87cc-8c22e4d8f746" />
-
+-->
+### 관련 코드
+- Kafka 관련
+  - `src/main/kafka`
+- Order 관련
+  - `src/main/order`
   
