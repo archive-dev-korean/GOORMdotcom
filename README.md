@@ -15,14 +15,14 @@
 - Messaging: Kafka (AWS MSK)
 - Infra/DevOps: Docker
 - Tools: Git, Jira, Notion, Slack
-<!--
+
 # 내용
 ## 전체 서비스 인프라
 <img width="2981" height="2250" alt="프로펙트 클라우드 1팀  아키텍처 3차 drawio" src="https://github.com/user-attachments/assets/09f017bc-d09d-4840-8dec-2c7b5bbe00d2" />
 
 ## ERD
 <img width="2338" height="2901" alt="프로펙트 클라우드 1팀  ERD-Page-1 drawio" src="https://github.com/user-attachments/assets/d25e3659-70a1-4ccd-b8af-42699293802f" />
-
+<!--
 ## 트랜잭션 시퀀스
 ![diagram-sequence](https://github.com/user-attachments/assets/2d727c20-5c17-4021-a3f5-91265e83d112)
 
@@ -70,6 +70,7 @@
 <img width="720" height="26" alt="image (2)" src="https://github.com/user-attachments/assets/a1ea7c1f-758c-4bd4-a3c8-d6b7d24d80c9" />
 <img width="480" height="232" alt="image (1)" src="https://github.com/user-attachments/assets/d2fa54db-bcce-4183-87cc-8c22e4d8f746" />
 -->
+
 ### 관련 코드
 - Kafka 관련
   - `src/main/kafka`
